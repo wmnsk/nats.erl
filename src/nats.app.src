@@ -1,5 +1,5 @@
 {application, nats,
- [{description, "An OTP application"},
+ [{description, "A simple NATS client for Erlang/OTP"},
   {vsn, "0.1.0"},
   {registered, []},
   {mod, {nats_app, []}},

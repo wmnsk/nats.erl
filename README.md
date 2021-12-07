@@ -8,7 +8,7 @@ _This project is still WIP. Any of the implementations, including exported APIs,
 
 - [ ] Connect to a NATS server
   - [x] A subscriber receiving messages (publish/subscribe)
-  - [ ] A subscriber receiving  messages (request/reply) - may work, not tested
+  - [ ] A subscriber receiving  messages (request/reply)
   - [x] A publisher sending messages
   - [x] Keep-alive (PING/PONG) handling
   - [ ] Unsubscribing
