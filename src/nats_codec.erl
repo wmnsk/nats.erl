@@ -8,10 +8,6 @@
 encode(#{operation := Op} = Params) ->
     encode(Op, maps:without([Op], Params)).
 
-encode('PING', _) ->
-    ?PING;
-encode('PONG', _) ->
-    ?PONG;
 encode('CONNECT', Opts) ->
     O = jsx:encode(Opts),
     <<"CONNECT ", O/binary, ?CRLF/binary>>;
@@ -26,7 +22,11 @@ encode('SUB', #{subject := Sbj, sid := SID, queue_group := QG}) ->
     <<"SUB ", Sbj/binary, " ", QG/binary, " ", ID/binary, ?CRLF/binary>>;
 encode('SUB', #{subject := Sbj, sid := SID}) ->
     ID = integer_to_binary(SID),
-    <<"SUB ", Sbj/binary, " ", ID/binary, ?CRLF/binary>>.
+    <<"SUB ", Sbj/binary, " ", ID/binary, ?CRLF/binary>>;
+encode('PING', _) ->
+    ?PING;
+encode('PONG', _) ->
+    ?PONG.
 
 decode(?PING) ->
     #{operation => 'PING'};
