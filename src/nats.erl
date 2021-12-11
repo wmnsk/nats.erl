@@ -94,7 +94,7 @@ handle_call({publish, Subject, ReplyTo, Message}, _From, State) ->
 handle_call({subscribe, Subject, SID}, {Sub, _Tag} = _From, State) ->
     Conn = State#state.conn,
     ok = nats_protocol:sub(Conn, Subject, SID),
-    Subs = maps:merge(State#state.subscribers, #{{Subject, SID} => Sub}),
+    Subs = maps:merge(State#state.subscribers, #{SID => Sub}),
     {reply, ok, State#state{subscribers = Subs}};
 handle_call({subscribe, Subject, QueueGroup, SID}, _From, State) ->
     Conn = State#state.conn,
@@ -124,8 +124,8 @@ handle_message(#{operation := 'PING'}, State) ->
     ok = nats_protocol:pong(State#state.conn),
     io:format("Responded to PING successfully~n", []),
     State;
-handle_message(#{operation := 'MSG', subject := S, sid := I} = U, State) ->
-    Subscriber = maps:get({S, I}, State#state.subscribers),
+handle_message(#{operation := 'MSG', sid := I} = U, State) ->
+    Subscriber = maps:get(I, State#state.subscribers),
     Subscriber ! U,
     State.
 
