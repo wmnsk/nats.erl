@@ -93,12 +93,12 @@ unmarshal(?PING) ->
     #{operation => 'PING'};
 unmarshal(Msg) ->
     [Op|Body] = string:split(Msg, " "),
-    unmarshal(binary_to_atom(string:uppercase(Op)), Body).
+    unmarshal(uppercase(Op), Body).
 
-unmarshal('INFO' = Op, [Body]) ->
+unmarshal(<<"INFO">> = Op, [Body]) ->
     Info = jsx:decode(Body, [{labels, atom}, return_maps]),
-    Info#{operation => Op};
-unmarshal('MSG' = Op, Body) ->
+    Info#{operation => binary_to_atom(Op)};
+unmarshal(<<"MSG">> = Op, Body) ->
     [M, P, <<>>] = string:split(Body, ?CRLF, all),
     {S, I, R, B} = case string:split(M, " ", all) of
         [Sbj, ID, Rep, Bytes] ->
@@ -106,5 +106,8 @@ unmarshal('MSG' = Op, Body) ->
         [Sbj, ID, Bytes] ->
             {Sbj, binary_to_integer(ID), undefined, binary_to_integer(Bytes)}
     end,
-    #{operation => Op, subject => S, sid => I, reply_to => R,
+    #{operation => binary_to_atom(Op), subject => S, sid => I, reply_to => R,
       num_bytes => B, payload => P}.
+
+uppercase(In) ->
+    [if L >= $a, L =< $z -> L - $a + $A; true -> L end || <<L>> <= In].
