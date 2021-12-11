@@ -9,9 +9,9 @@ _This project is still WIP. Any of the implementations, including exported APIs,
 
 # Features
 
-- [ ] Connect to a NATS server
+- [ ] Connecting to a NATS server
   - [x] A subscriber receiving messages (publish/subscribe)
-  - [ ] A subscriber receiving  messages (request/reply)
+  - [x] A subscriber receiving  messages (request/reply)
   - [x] A publisher sending messages
   - [x] Keep-alive (PING/PONG) handling
   - [ ] Unsubscribing
@@ -29,11 +29,13 @@ See [Subscriber/Publisher examples](./example) for details.
 
 ```erlang
 %% Start gen_server with network info.
-natserl:start_link(#{remote_address => Host,
-                     remote_port => P,
-                     ping_interval => 1000}),
+natserl:start_link(#{remote_address => Host, % server address
+                     remote_port => P,       % server port
+                     ping_interval => 1000   % interval to send PING
+                    }),
 
 %% Connect to your NATS server.
+%% Info has the contents of INFO message from the server.
 {ok, Info} = natserl:connect(),
 
 %% Subscribe or publish with required parameters.
@@ -49,14 +51,21 @@ end
 
 # Running examples
 
-Compile and run the sample subscriber.
+Compile everything first in the project root.
 
 ```shell-session
 rebar3 compile
+```
+
+Run the subscriber example.  
+Params: `<server address> <server port> <subject> <sid>`.
+
+```shell-session
 ./example/subscribe.escript 127.0.0.2 4222 foo.bar 11
 ```
 
-Then run the sample publisher on another terminal session.
+Then run the publisher example on another terminal session.  
+Params: `<server address> <server port> <subject> <message>`.
 
 ```shell-session
 ./example/publish.escript 127.0.0.2 4222 foo.bar "msg to publish"
