@@ -163,31 +163,35 @@ send(Conn, Msg, Expected) ->
 %% Sent to server to specify connection information.
 %% Sent by: Client
 connect(Conn, Opts) ->
-    P = nats_codec:encode('CONNECT', Opts),
+    P = nats_codec:encode(Opts#{operation => 'CONNECT'}),
     send(Conn, P, ?OK).
 
 %% Publish a message to a subject, with optional reply subject.
 %% Sent by: Client
 pub(Conn, Subject, Message) ->
-    P = nats_codec:encode('PUB', #{subject => Subject,
-                                   message => Message}),
+    P = nats_codec:encode(#{operation => 'PUB',
+                            subject => Subject,
+                            message => Message}),
     send(Conn, P, ?OK).
 pub(Conn, Subject, ReplyTo, Message) ->
-    P = nats_codec:encode('PUB', #{subject => Subject,
-                                   reply_to => ReplyTo,
-                                   message => Message}),
+    P = nats_codec:encode(#{operation => 'PUB',
+                            subject => Subject,
+                            reply_to => ReplyTo,
+                            message => Message}),
     send(Conn, P, ?OK).
 
 %% Subscribe to a subject (or subject wildcard).
 %% Sent by: Client
 sub(Conn, Subject, SID) ->
-    P = nats_codec:encode('SUB', #{subject => Subject,
-                                   sid => SID}),
+    P = nats_codec:encode(#{operation => 'SUB',
+                            subject => Subject,
+                            sid => SID}),
     send(Conn, P, ?OK).
 sub(Conn, Subject, QueueGroup, SID) ->
-    P = nats_codec:encode('SUB', #{subject => Subject,
-                                   queue_group => QueueGroup,
-                                   sid => SID}),
+    P = nats_codec:encode(#{operation => 'SUB',
+                            subject => Subject,
+                            queue_group => QueueGroup,
+                            sid => SID}),
     send(Conn, P, ?OK).
 
 %% Unsubscribe (or auto-unsubscribe) from subject.
@@ -198,11 +202,11 @@ unsub(_Conn, _SID, _MaxMsgs) -> unimplemented.
 %% PING keep-alive message.
 %% Sent by: Both
 ping(Conn) ->
-    P = nats_codec:encode('PING'),
+    P = nats_codec:encode(#{operation => 'PING'}),
     send(Conn, P, ?PONG).
 
 %% PONG keep-alive response.
 %% Sent by: Both
 pong(Conn) ->
-    P = nats_codec:encode('PONG'),
+    P = nats_codec:encode(#{operation => 'PONG'}),
     send(Conn, P, none).

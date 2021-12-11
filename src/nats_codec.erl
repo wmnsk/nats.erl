@@ -1,17 +1,17 @@
 -module(nats_codec).
 
--export([encode/1, encode/2,
+-export([encode/1,
          decode/1]).
 
 -include("include/nats.hrl").
 
-encode('PING') ->
-    ?PING;
-encode('PONG') ->
-    ?PONG;
-encode('CONNECT') ->
-    encode('CONNECT', #{}).
+encode(#{operation := Op} = Params) ->
+    encode(Op, maps:without([Op], Params)).
 
+encode('PING', _) ->
+    ?PING;
+encode('PONG', _) ->
+    ?PONG;
 encode('CONNECT', Opts) ->
     O = jsx:encode(Opts),
     <<"CONNECT ", O/binary, ?CRLF/binary>>;
