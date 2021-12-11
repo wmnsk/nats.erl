@@ -11,18 +11,18 @@ encode(#{operation := Op} = Params) ->
 encode('CONNECT', Opts) ->
     O = jsx:encode(Opts),
     <<"CONNECT ", O/binary, ?CRLF/binary>>;
+encode('PUB', #{subject := Sbj, message := Msg, reply_to := undefined}) ->
+    Bytes = integer_to_binary(byte_size(Msg)),
+    <<"PUB ", Sbj/binary, " ", Bytes/binary, ?CRLF/binary, Msg/binary, ?CRLF/binary>>;
 encode('PUB', #{subject := Sbj, message := Msg, reply_to := RepTo}) ->
     Bytes = integer_to_binary(byte_size(Msg)),
     <<"PUB ", Sbj/binary, " ", RepTo/binary, " ", Bytes/binary, ?CRLF/binary, Msg/binary, ?CRLF/binary>>;
-encode('PUB', #{subject := Sbj, message := Msg}) ->
-    Bytes = integer_to_binary(byte_size(Msg)),
-    <<"PUB ", Sbj/binary, " ", Bytes/binary, ?CRLF/binary, Msg/binary, ?CRLF/binary>>;
+encode('SUB', #{subject := Sbj, sid := SID, queue_group := undefined}) ->
+    ID = integer_to_binary(SID),
+    <<"SUB ", Sbj/binary, " ", ID/binary, ?CRLF/binary>>;
 encode('SUB', #{subject := Sbj, sid := SID, queue_group := QG}) ->
     ID = integer_to_binary(SID),
     <<"SUB ", Sbj/binary, " ", QG/binary, " ", ID/binary, ?CRLF/binary>>;
-encode('SUB', #{subject := Sbj, sid := SID}) ->
-    ID = integer_to_binary(SID),
-    <<"SUB ", Sbj/binary, " ", ID/binary, ?CRLF/binary>>;
 encode('PING', _) ->
     ?PING;
 encode('PONG', _) ->
