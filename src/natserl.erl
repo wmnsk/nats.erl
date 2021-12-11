@@ -82,34 +82,34 @@ handle_call({connect, Opts}, _From, State) ->
 handle_call({publish, Subject, Message}, _From, State) ->
     Conn = State#state.conn,
     P = natserl_codec:encode(#{operation => 'PUB',
-                            subject => Subject,
-                            reply_to => undefined,
-                            message => Message}),
+                               subject => Subject,
+                               reply_to => undefined,
+                               message => Message}),
     ok = send(Conn, P, ?OK),
     {reply, ok, State};
 handle_call({publish, Subject, ReplyTo, Message}, _From, State) ->
     Conn = State#state.conn,
     P = natserl_codec:encode(#{operation => 'PUB',
-                            subject => Subject,
-                            reply_to => ReplyTo,
-                            message => Message}),
+                               subject => Subject,
+                               reply_to => ReplyTo,
+                               message => Message}),
     ok = send(Conn, P, ?OK),
     {reply, ok, State};
 handle_call({subscribe, Subject, SID}, {Sub, _Tag} = _From, State) ->
     Conn = State#state.conn,
     P = natserl_codec:encode(#{operation => 'SUB',
-                            subject => Subject,
-                            queue_group => undefined,
-                            sid => SID}),
+                               subject => Subject,
+                               queue_group => undefined,
+                               sid => SID}),
     ok = send(Conn, P, ?OK),
     Subs = maps:merge(State#state.subscribers, #{SID => Sub}),
     {reply, ok, State#state{subscribers = Subs}};
 handle_call({subscribe, Subject, QueueGroup, SID}, {Sub, _Tag} = _From, State) ->
     Conn = State#state.conn,
     P = natserl_codec:encode(#{operation => 'SUB',
-                            subject => Subject,
-                            queue_group => QueueGroup,
-                            sid => SID}),
+                               subject => Subject,
+                               queue_group => QueueGroup,
+                               sid => SID}),
     ok = send(Conn, P, ?OK),
     Subs = maps:merge(State#state.subscribers, #{SID => Sub}),
     {reply, ok, State#state{subscribers = Subs}};
