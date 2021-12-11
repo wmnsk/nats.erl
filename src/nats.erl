@@ -16,6 +16,8 @@
          terminate/2,
          code_change/3]).
 
+-include("include/nats.hrl").
+
 -record(state,
         {remote_address :: inet:hostname(),
          remote_port    :: inet:portno(),
@@ -66,7 +68,7 @@ init([Config]) ->
     Rport = maps:get(remote_port, Config, 0),
     {ok, Socket} = gen_tcp:connect(Raddr, Rport, [binary, {active, false}]),
     {ok, Msg} = gen_tcp:recv(Socket, 0, 1000),
-    Info = nats_protocol:unmarshal(Msg),
+    Info = nats_codec:decode(Msg),
 
     Conn = spawn(fun() -> sender_loop(Socket) end),
     Interval = maps:get(ping_interval, Config, -1),
@@ -81,39 +83,39 @@ init([Config]) ->
 
 handle_call({connect, Opts}, _From, State) ->
     Conn = State#state.conn,
-    ok = nats_protocol:connect(Conn, Opts),
+    ok = connect(Conn, Opts),
     {reply, State#state.conn_info, State};
 handle_call({publish, Subject, Message}, _From, State) ->
     Conn = State#state.conn,
-    ok = nats_protocol:pub(Conn, Subject, Message),
+    ok = pub(Conn, Subject, Message),
     {reply, ok, State};
 handle_call({publish, Subject, ReplyTo, Message}, _From, State) ->
     Conn = State#state.conn,
-    ok = nats_protocol:pub(Conn, Subject, ReplyTo, Message),
+    ok = pub(Conn, Subject, ReplyTo, Message),
     {reply, ok, State};
 handle_call({subscribe, Subject, SID}, {Sub, _Tag} = _From, State) ->
     Conn = State#state.conn,
-    ok = nats_protocol:sub(Conn, Subject, SID),
+    ok = sub(Conn, Subject, SID),
     Subs = maps:merge(State#state.subscribers, #{SID => Sub}),
     {reply, ok, State#state{subscribers = Subs}};
 handle_call({subscribe, Subject, QueueGroup, SID}, _From, State) ->
     Conn = State#state.conn,
-    ok = nats_protocol:sub(Conn, Subject, QueueGroup, SID),
+    ok = sub(Conn, Subject, QueueGroup, SID),
     {reply, {ok, State#state.conn}, State};
 handle_call(_Request, _From, State) ->
     {reply, nonexisting, State}.
 
 handle_cast(pong, State) ->
-    ok = nats_protocol:pong(sock),
+    ok = pong(sock),
     {noreply, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
 handle_info({tcp, _Socket, Msg}, State) ->
-    NewState = handle_message(nats_protocol:unmarshal(Msg), State),
+    NewState = handle_message(nats_codec:decode(Msg), State),
     {noreply, NewState};
 handle_info(ping_interval, State) ->
-    ok = nats_protocol:ping(State#state.conn),
+    ok = ping(State#state.conn),
     io:format("Exchanged PING/PONG successfully~n", []),
     {noreply, State};
 handle_info(Info, State) ->
@@ -121,7 +123,7 @@ handle_info(Info, State) ->
     {noreply, State}.
 
 handle_message(#{operation := 'PING'}, State) ->
-    ok = nats_protocol:pong(State#state.conn),
+    ok = pong(State#state.conn),
     io:format("Responded to PING successfully~n", []),
     State;
 handle_message(#{operation := 'MSG', sid := I} = U, State) ->
@@ -149,3 +151,58 @@ sender_loop(Socket) ->
             io:format("Huh?: ~p~n", [CatchAll])
     end,
     sender_loop(Socket).
+
+%% functions to actually send messages.
+%% TODO: add more specs.
+
+-spec send(pid(), binary(), binary() | none) -> ok.
+send(Conn, Msg, Expected) ->
+    Conn ! {send, Msg, Expected},
+    ok.
+
+%% Sent to server to specify connection information.
+%% Sent by: Client
+connect(Conn, Opts) ->
+    P = nats_codec:encode('CONNECT', Opts),
+    send(Conn, P, ?OK).
+
+%% Publish a message to a subject, with optional reply subject.
+%% Sent by: Client
+pub(Conn, Subject, Message) ->
+    P = nats_codec:encode('PUB', #{subject => Subject,
+                                   message => Message}),
+    send(Conn, P, ?OK).
+pub(Conn, Subject, ReplyTo, Message) ->
+    P = nats_codec:encode('PUB', #{subject => Subject,
+                                   reply_to => ReplyTo,
+                                   message => Message}),
+    send(Conn, P, ?OK).
+
+%% Subscribe to a subject (or subject wildcard).
+%% Sent by: Client
+sub(Conn, Subject, SID) ->
+    P = nats_codec:encode('SUB', #{subject => Subject,
+                                   sid => SID}),
+    send(Conn, P, ?OK).
+sub(Conn, Subject, QueueGroup, SID) ->
+    P = nats_codec:encode('SUB', #{subject => Subject,
+                                   queue_group => QueueGroup,
+                                   sid => SID}),
+    send(Conn, P, ?OK).
+
+%% Unsubscribe (or auto-unsubscribe) from subject.
+%% Sent by: Client
+unsub(_Conn, _SID) -> unimplemented.
+unsub(_Conn, _SID, _MaxMsgs) -> unimplemented.
+
+%% PING keep-alive message.
+%% Sent by: Both
+ping(Conn) ->
+    P = nats_codec:encode('PING'),
+    send(Conn, P, ?PONG).
+
+%% PONG keep-alive response.
+%% Sent by: Both
+pong(Conn) ->
+    P = nats_codec:encode('PONG'),
+    send(Conn, P, none).
