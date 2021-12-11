@@ -29,16 +29,16 @@ See [Subscriber/Publisher examples](./example) for details.
 
 ```erlang
 %% Start gen_server with network info.
-nats:start_link(#{remote_address => Host,
-                  remote_port => P,
-                  ping_interval => 1000}),
+natserl:start_link(#{remote_address => Host,
+                     remote_port => P,
+                     ping_interval => 1000}),
 
 %% Connect to your NATS server.
-{ok, Info} = nats:connect(),
+{ok, Info} = natserl:connect(),
 
 %% Subscribe or publish with required parameters.
-ok = nats:subscribe(Subject, SID),
-ok = nats:publish(Subject, Message),
+ok = natserl:subscribe(Subject, SID),
+ok = natserl:publish(Subject, Message),
 
 %% After subscribing, received messages are sent to your Pid.
 receive
@@ -64,7 +64,7 @@ Then run the sample publisher on another terminal session.
 
 ## Author(s)
 
-Yoshiyuki Kurauchi ([Website](https://wmnsk.com/) / [Twitter](https://twitter.com/wmnskdmms))
+Yoshiyuki Kurauchi ([Website](https://wmnsk.com/) / [Twitter](https://twitter.com/wmnskdmms)), with a lot of help from my teammates in [Working Group Two](https://wgtwo.com).
 
 _We're always open to welcome co-authors! Please feel free to talk to us._
 
