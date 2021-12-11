@@ -10,6 +10,7 @@
   {env,[]},
   {modules, []},
 
+  {contributors,["Yoshiyuki Kurauchi"]},
   {licenses, ["Apache 2.0"]},
-  {links, []}
+  {links, [{"GitHub", "https://github.com/wmnsk/nats.erl"}]}
  ]}.
