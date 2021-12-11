@@ -1,16 +1,13 @@
-{application, nats,
+{application, natserl,
  [{description, "A simple NATS client for Erlang/OTP"},
   {vsn, "0.1.0"},
+  {modules, []},
   {registered, []},
-  {mod, {nats_app, []}},
   {applications,
    [kernel,
     stdlib
    ]},
   {env,[]},
-  {modules, []},
-
-  {contributors,["Yoshiyuki Kurauchi"]},
   {licenses, ["Apache 2.0"]},
   {links, [{"GitHub", "https://github.com/wmnsk/nats.erl"}]}
  ]}.

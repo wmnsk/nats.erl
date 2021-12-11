@@ -1,4 +1,4 @@
--module(nats_codec).
+-module(natserl_codec).
 
 -export([encode/1,
          decode/1]).

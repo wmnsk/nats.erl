@@ -1,4 +1,4 @@
--module(nats).
+-module(natserl).
 
 -behaviour(gen_server).
 
@@ -61,7 +61,7 @@ init([Config]) ->
     Rport = maps:get(remote_port, Config, 0),
     {ok, Socket} = gen_tcp:connect(Raddr, Rport, [binary, {active, false}]),
     {ok, Msg} = gen_tcp:recv(Socket, 0, 1000),
-    Info = nats_codec:decode(Msg),
+    Info = natserl_codec:decode(Msg),
 
     Conn = spawn(fun() -> sender_loop(Socket) end),
     Interval = maps:get(ping_interval, Config, -1),
@@ -76,12 +76,12 @@ init([Config]) ->
 
 handle_call({connect, Opts}, _From, State) ->
     Conn = State#state.conn,
-    P = nats_codec:encode(Opts#{operation => 'CONNECT'}),
+    P = natserl_codec:encode(Opts#{operation => 'CONNECT'}),
     ok = send(Conn, P, ?OK),
     {reply, State#state.conn_info, State};
 handle_call({publish, Subject, Message}, _From, State) ->
     Conn = State#state.conn,
-    P = nats_codec:encode(#{operation => 'PUB',
+    P = natserl_codec:encode(#{operation => 'PUB',
                             subject => Subject,
                             reply_to => undefined,
                             message => Message}),
@@ -89,7 +89,7 @@ handle_call({publish, Subject, Message}, _From, State) ->
     {reply, ok, State};
 handle_call({publish, Subject, ReplyTo, Message}, _From, State) ->
     Conn = State#state.conn,
-    P = nats_codec:encode(#{operation => 'PUB',
+    P = natserl_codec:encode(#{operation => 'PUB',
                             subject => Subject,
                             reply_to => ReplyTo,
                             message => Message}),
@@ -97,7 +97,7 @@ handle_call({publish, Subject, ReplyTo, Message}, _From, State) ->
     {reply, ok, State};
 handle_call({subscribe, Subject, SID}, {Sub, _Tag} = _From, State) ->
     Conn = State#state.conn,
-    P = nats_codec:encode(#{operation => 'SUB',
+    P = natserl_codec:encode(#{operation => 'SUB',
                             subject => Subject,
                             queue_group => undefined,
                             sid => SID}),
@@ -106,7 +106,7 @@ handle_call({subscribe, Subject, SID}, {Sub, _Tag} = _From, State) ->
     {reply, ok, State#state{subscribers = Subs}};
 handle_call({subscribe, Subject, QueueGroup, SID}, {Sub, _Tag} = _From, State) ->
     Conn = State#state.conn,
-    P = nats_codec:encode(#{operation => 'SUB',
+    P = natserl_codec:encode(#{operation => 'SUB',
                             subject => Subject,
                             queue_group => QueueGroup,
                             sid => SID}),
@@ -120,10 +120,10 @@ handle_cast(_Msg, State) ->
     {noreply, State}.
 
 handle_info({tcp, _Socket, Msg}, State) ->
-    NewState = handle_message(nats_codec:decode(Msg), State),
+    NewState = handle_message(natserl_codec:decode(Msg), State),
     {noreply, NewState};
 handle_info(ping_interval, State) ->
-    P = nats_codec:encode(#{operation => 'PING'}),
+    P = natserl_codec:encode(#{operation => 'PING'}),
     ok = send(State#state.conn, P, ?PONG),
     io:format("Exchanged PING/PONG successfully~n", []),
     {noreply, State};
@@ -132,7 +132,7 @@ handle_info(Info, State) ->
     {noreply, State}.
 
 handle_message(#{operation := 'PING'}, State) ->
-    P = nats_codec:encode(#{operation => 'PONG'}),
+    P = natserl_codec:encode(#{operation => 'PONG'}),
     ok = send(State#state.conn, P, none),
     io:format("Responded to PING successfully~n", []),
     State;

@@ -2,6 +2,9 @@
 
 A simple [NATS](https://nats.io/) client library for Erlang/OTP.
 
+[![Hex.pm version](https://img.shields.io/hexpm/v/natserl.svg)](https://hex.pm/packages/natserl) 
+![CI status](https://github.com/wmnsk/nats.erl/actions/workflows/test.yml/badge.svg)
+
 _This project is still WIP. Any of the implementations, including exported APIs, may change drastically and frequently._
 
 # Features
