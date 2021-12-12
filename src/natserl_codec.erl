@@ -3,7 +3,7 @@
 -export([encode/1,
          decode/1]).
 
--include("include/nats.hrl").
+-include_lib("include/natserl.hrl").
 
 encode(#{operation := Op} = Params) ->
     encode(Op, maps:without([Op], Params)).

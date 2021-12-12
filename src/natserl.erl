@@ -15,7 +15,8 @@
          terminate/2,
          code_change/3]).
 
--include("include/nats.hrl").
+-include_lib("kernel/include/logger.hrl").
+-include_lib("include/natserl.hrl").
 
 -record(state,
         {remote_address :: inet:hostname(),
@@ -39,18 +40,18 @@ connect(Opts) ->
     {ok, Socket}.
 
 publish(Subject, Message) ->
-    gen_server:call(?MODULE, {publish, Subject, Message}).
+    publish(Subject, undefined, Message).
 publish(Subject, ReplyTo, Message) ->
     gen_server:call(?MODULE, {publish, Subject, ReplyTo, Message}).
 
 subscribe(Subject, SID) ->
-    gen_server:call(?MODULE, {subscribe, Subject, SID}).
+    subscribe(Subject, undefined, SID).
 subscribe(Subject, QueueGroup, SID) ->
     gen_server:call(?MODULE, {subscribe, Subject, QueueGroup, SID}).
 
 %% not implemented yet.
 unsubscribe(SID) ->
-    gen_server:call(?MODULE, {unsubscribe, SID}).
+    unsubscribe(SID, undefined).
 unsubscribe(SID, MaxMsgs) ->
     gen_server:call(?MODULE, {unsubscribe, SID, MaxMsgs}).
 
@@ -79,14 +80,6 @@ handle_call({connect, Opts}, _From, State) ->
     P = natserl_codec:encode(Opts#{operation => 'CONNECT'}),
     ok = send(Conn, P, ?OK),
     {reply, State#state.conn_info, State};
-handle_call({publish, Subject, Message}, _From, State) ->
-    Conn = State#state.conn,
-    P = natserl_codec:encode(#{operation => 'PUB',
-                               subject => Subject,
-                               reply_to => undefined,
-                               message => Message}),
-    ok = send(Conn, P, ?OK),
-    {reply, ok, State};
 handle_call({publish, Subject, ReplyTo, Message}, _From, State) ->
     Conn = State#state.conn,
     P = natserl_codec:encode(#{operation => 'PUB',
@@ -95,15 +88,6 @@ handle_call({publish, Subject, ReplyTo, Message}, _From, State) ->
                                message => Message}),
     ok = send(Conn, P, ?OK),
     {reply, ok, State};
-handle_call({subscribe, Subject, SID}, {Sub, _Tag} = _From, State) ->
-    Conn = State#state.conn,
-    P = natserl_codec:encode(#{operation => 'SUB',
-                               subject => Subject,
-                               queue_group => undefined,
-                               sid => SID}),
-    ok = send(Conn, P, ?OK),
-    Subs = maps:merge(State#state.subscribers, #{SID => Sub}),
-    {reply, ok, State#state{subscribers = Subs}};
 handle_call({subscribe, Subject, QueueGroup, SID}, {Sub, _Tag} = _From, State) ->
     Conn = State#state.conn,
     P = natserl_codec:encode(#{operation => 'SUB',
