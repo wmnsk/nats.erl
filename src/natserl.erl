@@ -109,16 +109,16 @@ handle_info({tcp, _Socket, Msg}, State) ->
 handle_info(ping_interval, State) ->
     P = natserl_codec:encode(#{operation => 'PING'}),
     ok = send(State#state.conn, P, ?PONG),
-    io:format("Exchanged PING/PONG successfully~n", []),
+    ?LOG_DEBUG("Exchanged PING/PONG successfully~n", []),
     {noreply, State};
 handle_info(Info, State) ->
-    io:format("Meh: ~p~n", [Info]),
+    ?LOG_ERROR("Meh: ~p~n", [Info]),
     {noreply, State}.
 
 handle_message(#{operation := 'PING'}, State) ->
     P = natserl_codec:encode(#{operation => 'PONG'}),
     ok = send(State#state.conn, P, none),
-    io:format("Responded to PING successfully~n", []),
+    ?LOG_DEBUG("Responded to PING successfully~n", []),
     State;
 handle_message(#{operation := 'MSG', sid := I} = U, State) ->
     Subscriber = maps:get(I, State#state.subscribers),
@@ -147,6 +147,6 @@ sender_loop(Socket) ->
             gen_tcp:send(Socket, Bin),
             {ok, Rsp} = gen_tcp:recv(Socket, byte_size(Rsp));
         CatchAll ->
-            io:format("Huh?: ~p~n", [CatchAll])
+            ?LOG_ERROR("Huh?: ~p~n", [CatchAll])
     end,
     sender_loop(Socket).
