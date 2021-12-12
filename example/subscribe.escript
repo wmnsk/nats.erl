@@ -4,17 +4,18 @@
 main([Host, Port, Subject, SID]) ->
     P = list_to_integer(Port),
     natserl:start_link(#{remote_address => Host,
-                      remote_port => P,
-                      ping_interval => 1000}),
+                         remote_port => P,
+                         ping_interval => 1000}),
     {ok, Info} = natserl:connect(),
-    io:format("~p~n", [Info]),
+    io:format("Connected to server: ~p~n", [Info]),
     ok = natserl:subscribe(list_to_binary(Subject), list_to_integer(SID)),
     loop().
 
 loop() ->
+    io:format("Waiting for messages...~n", []),
     receive
         Msg ->
-            io:format("Received: ~p~n", [Msg]),
+            io:format("Received a message: ~p~n", [Msg]),
             loop()
     after
         60000 ->
