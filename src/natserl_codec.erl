@@ -6,34 +6,57 @@
 -include_lib("include/natserl.hrl").
 
 encode(#{operation := Op} = Params) ->
-    encode(Op, maps:without([Op], Params)).
+    encode(Op, maps:without([operation], Params)).
 
+encode('INFO', Info) ->
+    I = jsx:encode(Info),
+    ?INFO(I);
 encode('CONNECT', Opts) ->
     O = jsx:encode(Opts),
-    <<"CONNECT ", O/binary, ?CRLF/binary>>;
-encode('PUB', #{subject := Sbj, message := Msg, reply_to := undefined}) ->
+    ?CONNECT(O);
+encode('PUB', #{subject := Sbj, payload := Msg} = Body) ->
     Bytes = integer_to_binary(byte_size(Msg)),
-    <<"PUB ", Sbj/binary, " ", Bytes/binary, ?CRLF/binary, Msg/binary, ?CRLF/binary>>;
-encode('PUB', #{subject := Sbj, message := Msg, reply_to := RepTo}) ->
+    case maps:get(reply_to, Body, undefined) of
+        undefined ->
+            ?PUB(Sbj, Bytes, Msg);
+        RepTo ->
+            ?PUB(Sbj, RepTo, Bytes, Msg)
+    end;
+encode('SUB', #{subject := Sbj, sid := SID} = Body) ->
+    ID = integer_to_binary(SID),
+    case maps:get(queue_group, Body, undefined) of
+        undefined ->
+            ?SUB(Sbj, ID);
+        QG ->
+            ?SUB(Sbj, QG, ID)
+    end;
+encode('UNSUB', #{sid := SID} = Body) ->
+    ID = integer_to_binary(SID),
+    case maps:get(max_msgs, Body, undefined) of
+        undefined ->
+            ?UNSUB(ID);
+        Max ->
+            M = integer_to_binary(Max),
+            ?UNSUB(ID, M)
+    end;
+encode('MSG', #{subject := Sbj, sid := SID, payload := Msg} = Body) ->
     Bytes = integer_to_binary(byte_size(Msg)),
-    <<"PUB ", Sbj/binary, " ", RepTo/binary, " ", Bytes/binary, ?CRLF/binary, Msg/binary, ?CRLF/binary>>;
-encode('SUB', #{subject := Sbj, sid := SID, queue_group := undefined}) ->
     ID = integer_to_binary(SID),
-    <<"SUB ", Sbj/binary, " ", ID/binary, ?CRLF/binary>>;
-encode('SUB', #{subject := Sbj, sid := SID, queue_group := QG}) ->
-    ID = integer_to_binary(SID),
-    <<"SUB ", Sbj/binary, " ", QG/binary, " ", ID/binary, ?CRLF/binary>>;
+    case maps:get(reply_to, Body, undefined) of
+        undefined ->
+            ?MSG(Sbj, ID, Bytes, Msg);
+        RepTo ->
+            ?MSG(Sbj, ID, RepTo, Bytes, Msg)
+    end;
 encode('PING', _) ->
     ?PING;
 encode('PONG', _) ->
-    ?PONG.
+    ?PONG;
+encode('OK', _) ->
+    ?OK;
+encode('ERR', #{message := Msg}) ->
+    ?ERR(Msg).
 
-decode(?PING) ->
-    #{operation => 'PING'};
-decode(?PONG) ->
-    #{operation => 'PONG'};
-decode(?OK) ->
-    #{operation => 'OK'};
 decode(Msg) ->
     [Op|Body] = string:split(Msg, " "),
     decode(upper_atom(Op), Body).
@@ -41,6 +64,34 @@ decode(Msg) ->
 decode('INFO' = Op, [Body]) ->
     Info = jsx:decode(Body, [{labels, atom}, return_maps]),
     Info#{operation => Op};
+decode('CONNECT' = Op, [Body]) ->
+    Opts = jsx:decode(Body, [{labels, atom}, return_maps]),
+    Opts#{operation => Op};
+decode('PUB' = Op, Body) ->
+    [M, P, <<>>] = string:split(Body, ?CRLF, all),
+    {S, R, B} = case string:split(M, " ", all) of
+        [Sbj, Rep, Bytes] ->
+            {Sbj, Rep, binary_to_integer(Bytes)};
+        [Sbj, Bytes] ->
+            {Sbj, undefined, binary_to_integer(Bytes)}
+    end,
+    #{operation => Op, subject => S, reply_to => R, num_bytes => B, payload => P};
+decode('SUB' = Op, [Body]) ->
+    {S, Q, I} = case string:split(remove_crlf(Body), " ", all) of
+        [Sbj, QG, SID] ->
+            {Sbj, QG, binary_to_integer(SID)};
+        [Sbj, SID] ->
+            {Sbj, undefined, binary_to_integer(SID)}
+    end,
+    #{operation => Op, subject => S, queue_group => Q, sid => I};
+decode('UNSUB' = Op, [Body]) ->
+    {I, M} = case string:split(remove_crlf(Body), " ", all) of
+        [SID, Max] ->
+            {binary_to_integer(SID), binary_to_integer(Max)};
+        [SID] ->
+            {binary_to_integer(SID), undefined}
+    end,
+    #{operation => Op, sid => I, max_msgs => M};
 decode('MSG' = Op, Body) ->
     [M, P, <<>>] = string:split(Body, ?CRLF, all),
     {S, I, R, B} = case string:split(M, " ", all) of
@@ -49,10 +100,19 @@ decode('MSG' = Op, Body) ->
         [Sbj, ID, Bytes] ->
             {Sbj, binary_to_integer(ID), undefined, binary_to_integer(Bytes)}
     end,
-    #{operation => Op, subject => S, sid => I, reply_to => R, num_bytes => B, payload => P}.
+    #{operation => Op, subject => S, sid => I, reply_to => R, num_bytes => B, payload => P};
+decode('PING', _) ->
+    #{operation => 'PING'};
+decode('PONG', _) ->
+    #{operation => 'PONG'};
+decode('OK', _) ->
+    #{operation => 'OK'};
+decode('ERR' = Op, [Body]) ->
+    #{operation => Op, message => remove_crlf(Body)}.
 
-upper_atom(In) ->
-    to_atom([if L >= $a, L =< $z -> L - $a + $A; true -> L end || <<L>> <= In]).
+upper_atom(Bin) ->
+    to_atom([if L >= $a, L =< $z -> L - $a + $A; true -> L end
+             || <<L>> <= remove_crlf(Bin)]).
 
 to_atom("INFO")    -> 'INFO';
 to_atom("CONNECT") -> 'CONNECT';
@@ -61,6 +121,11 @@ to_atom("SUB")     -> 'SUB';
 to_atom("UNSUB")   -> 'UNSUB';
 to_atom("MSG")     -> 'MSG';
 to_atom("PING")    -> 'PING';
-to_atom("PONG")    -> 'INFO';
+to_atom("PONG")    -> 'PONG';
 to_atom("+OK")     -> 'OK';
 to_atom("-ERR")    -> 'ERR'.
+
+remove_crlf(Bin) ->
+    %% for some reason string:trim(Bin, trailing, "\r\n") doesn't work.
+    [B|_] = string:replace(Bin, "\r\n", ""),
+    B.

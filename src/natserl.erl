@@ -85,7 +85,7 @@ handle_call({publish, Subject, ReplyTo, Message}, _From, State) ->
     P = natserl_codec:encode(#{operation => 'PUB',
                                subject => Subject,
                                reply_to => ReplyTo,
-                               message => Message}),
+                               payload => Message}),
     ok = send(Conn, P, ?OK),
     {reply, ok, State};
 handle_call({subscribe, Subject, QueueGroup, SID}, {Sub, _Tag} = _From, State) ->
