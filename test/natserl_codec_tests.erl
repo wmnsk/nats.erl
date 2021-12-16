@@ -35,44 +35,44 @@ pub_rep_test_() ->
      ?_assertEqual(Bin, natserl_codec:encode(Map))].
 
 sub_test_() ->
-    Bin = <<"SUB foo.bar 101\r\n">>,
+    Bin = <<"SUB foo.bar abc123\r\n">>,
     Map = #{operation => 'SUB',
             subject => <<"foo.bar">>,
-            sid => 101,
+            sid => <<"abc123">>,
             queue_group => undefined}, % can be omitted in encode
     [?_assertEqual(Map, natserl_codec:decode(Bin)),
      ?_assertEqual(Bin, natserl_codec:encode(Map))].
 
 sub_qg_test_() ->
-    Bin = <<"SUB foo.bar qg1 101\r\n">>,
+    Bin = <<"SUB foo.bar qg1 abc123\r\n">>,
     Map = #{operation => 'SUB',
             subject => <<"foo.bar">>,
-            sid => 101,
+            sid => <<"abc123">>,
             queue_group => <<"qg1">>}, % can be omitted in encode
     [?_assertEqual(Map, natserl_codec:decode(Bin)),
      ?_assertEqual(Bin, natserl_codec:encode(Map))].
 
 unsub_test_() ->
-    Bin = <<"UNSUB 101\r\n">>,
+    Bin = <<"UNSUB abc123\r\n">>,
     Map = #{operation => 'UNSUB',
-            sid => 101,
+            sid => <<"abc123">>,
             max_msgs => undefined}, % can be omitted in encode
     [?_assertEqual(Map, natserl_codec:decode(Bin)),
      ?_assertEqual(Bin, natserl_codec:encode(Map))].
 
 unsub_msgs_test_() ->
-    Bin = <<"UNSUB 101 255\r\n">>,
+    Bin = <<"UNSUB abc123 255\r\n">>,
     Map = #{operation => 'UNSUB',
-            sid => 101,
+            sid => <<"abc123">>,
             max_msgs => 255},
     [?_assertEqual(Map, natserl_codec:decode(Bin)),
      ?_assertEqual(Bin, natserl_codec:encode(Map))].
 
 msg_test_() ->
-    Bin = <<"MSG foo.bar 101 18\r\nYou got a message.\r\n">>,
+    Bin = <<"MSG foo.bar abc123 18\r\nYou got a message.\r\n">>,
     Map = #{operation => 'MSG',
             subject => <<"foo.bar">>,
-            sid => 101,
+            sid => <<"abc123">>,
             reply_to => undefined, % can be omitted in encode
             num_bytes => 18,       % can be omitted in encode
             payload => <<"You got a message.">>},

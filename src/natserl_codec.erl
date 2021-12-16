@@ -23,30 +23,32 @@ encode('PUB', #{subject := Sbj, payload := Msg} = Body) ->
             ?PUB(Sbj, RepTo, Bytes, Msg)
     end;
 encode('SUB', #{subject := Sbj, sid := SID} = Body) ->
-    ID = integer_to_binary(SID),
     case maps:get(queue_group, Body, undefined) of
         undefined ->
-            ?SUB(Sbj, ID);
+            ?SUB(Sbj, SID);
         QG ->
-            ?SUB(Sbj, QG, ID)
+            %% If I remove this variable, compiler will say
+            %% "src/natserl_codec.erl:31:23: variable 'ID' is unbound."
+            %% `rebar3 clean` and removing _build/ dir didn't work.
+            %% So weird ¯\_(ツ)_/¯
+            ID = SID,
+            ?SUB(Sbj, QG, SID)
     end;
 encode('UNSUB', #{sid := SID} = Body) ->
-    ID = integer_to_binary(SID),
     case maps:get(max_msgs, Body, undefined) of
         undefined ->
-            ?UNSUB(ID);
+            ?UNSUB(SID);
         Max ->
             M = integer_to_binary(Max),
-            ?UNSUB(ID, M)
+            ?UNSUB(SID, M)
     end;
 encode('MSG', #{subject := Sbj, sid := SID, payload := Msg} = Body) ->
     Bytes = integer_to_binary(byte_size(Msg)),
-    ID = integer_to_binary(SID),
     case maps:get(reply_to, Body, undefined) of
         undefined ->
-            ?MSG(Sbj, ID, Bytes, Msg);
+            ?MSG(Sbj, SID, Bytes, Msg);
         RepTo ->
-            ?MSG(Sbj, ID, RepTo, Bytes, Msg)
+            ?MSG(Sbj, SID, RepTo, Bytes, Msg)
     end;
 encode('PING', _) ->
     ?PING;
@@ -79,26 +81,26 @@ decode('PUB' = Op, Body) ->
 decode('SUB' = Op, [Body]) ->
     {S, Q, I} = case string:split(remove_crlf(Body), " ", all) of
         [Sbj, QG, SID] ->
-            {Sbj, QG, binary_to_integer(SID)};
+            {Sbj, QG, SID};
         [Sbj, SID] ->
-            {Sbj, undefined, binary_to_integer(SID)}
+            {Sbj, undefined, SID}
     end,
     #{operation => Op, subject => S, queue_group => Q, sid => I};
 decode('UNSUB' = Op, [Body]) ->
     {I, M} = case string:split(remove_crlf(Body), " ", all) of
         [SID, Max] ->
-            {binary_to_integer(SID), binary_to_integer(Max)};
+            {SID, binary_to_integer(Max)};
         [SID] ->
-            {binary_to_integer(SID), undefined}
+            {SID, undefined}
     end,
     #{operation => Op, sid => I, max_msgs => M};
 decode('MSG' = Op, Body) ->
     [M, P, <<>>] = string:split(Body, ?CRLF, all),
     {S, I, R, B} = case string:split(M, " ", all) of
         [Sbj, ID, Rep, Bytes] ->
-            {Sbj, binary_to_integer(ID), Rep, binary_to_integer(Bytes)};
+            {Sbj, ID, Rep, binary_to_integer(Bytes)};
         [Sbj, ID, Bytes] ->
-            {Sbj, binary_to_integer(ID), undefined, binary_to_integer(Bytes)}
+            {Sbj, ID, undefined, binary_to_integer(Bytes)}
     end,
     #{operation => Op, subject => S, sid => I, reply_to => R, num_bytes => B, payload => P};
 decode('PING', _) ->

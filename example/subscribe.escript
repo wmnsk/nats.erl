@@ -8,7 +8,7 @@ main([Host, Port, Subject, SID]) ->
                          ping_interval => 1000}),
     {ok, Info} = natserl:connect(),
     io:format("Connected to server: ~p~n", [Info]),
-    ok = natserl:subscribe(list_to_binary(Subject), list_to_integer(SID)),
+    ok = natserl:subscribe(list_to_binary(Subject), list_to_binary(SID)),
     loop().
 
 loop() ->
