@@ -37,7 +37,7 @@ start_link(Config) ->
     gen_server:start_link({local, Name}, ?MODULE, [Config#{name => Name}], []).
 
 connect() ->
-    connect(#{}).
+    connect(?MODULE, #{}).
 connect(Pid) when is_pid(Pid) ->
     connect(Pid, #{});
 connect(Opts) when is_map(Opts) ->
