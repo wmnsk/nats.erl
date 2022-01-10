@@ -6,7 +6,8 @@
          connect/0, connect/1, connect/2,
          publish/2, publish/3, publish/4,
          subscribe/2, subscribe/3, subscribe/4,
-         unsubscribe/1, unsubscribe/2, unsubscribe/3]).
+         unsubscribe/1, unsubscribe/2, unsubscribe/3,
+         receive_on/2, receive_on/3]).
 
 -export([init/1,
          handle_call/3,
@@ -73,6 +74,11 @@ unsubscribe(SID, MaxMsgs) ->
 unsubscribe(Pid, SID, MaxMsgs) ->
     gen_server:call(Pid, {unsubscribe, SID, MaxMsgs}).
 
+receive_on(SID, Receiver) ->
+    receive_on(?MODULE, SID, Receiver).
+receive_on(Pid, SID, Receiver) ->
+    gen_server:call(Pid, {receive_on, SID, Receiver}).
+
 %% gen_server callbacks
 
 init([Config]) ->
@@ -83,7 +89,7 @@ init([Config]) ->
     {ok, Msg} = gen_tcp:recv(Socket, 0, 1000),
     Info = natserl_codec:decode(Msg),
 
-    Conn = spawn(fun() -> sender_loop(Socket) end),
+    Pid = spawn_link(fun() -> sender_loop(Socket) end),
     Interval = maps:get(ping_interval, Config, -1),
     timer:send_interval(Interval, ping_interval),
 
@@ -91,7 +97,7 @@ init([Config]) ->
                 remote_address = Raddr,
                 remote_port = Rport,
                 socket = Socket,
-                conn = Conn,
+                conn = Pid,
                 conn_info = Info,
                 subscribers = #{}}}.
 
@@ -117,10 +123,14 @@ handle_call({subscribe, Subject, QueueGroup, SID}, {Sub, _Tag} = _From, State) -
     ok = send(Conn, P, ?OK),
     Subs = maps:merge(State#state.subscribers, #{SID => Sub}),
     {reply, ok, State#state{subscribers = Subs}};
+handle_call({receive_on, SID, Receiver}, _From, State) ->
+    Subs = maps:merge(State#state.subscribers, #{SID => Receiver}),
+    {reply, ok, State#state{subscribers = Subs}};
 handle_call(_Request, _From, State) ->
     {reply, nonexisting, State}.
 
-handle_cast(_Msg, State) ->
+handle_cast(Msg, State) ->
+    ?LOG_ERROR("Got unknown cast: ~p~n", [Msg]),
     {noreply, State}.
 
 handle_info({tcp, _Socket, Msg}, State) ->
@@ -132,7 +142,7 @@ handle_info(ping_interval, State) ->
     ?LOG_DEBUG("Exchanged PING/PONG successfully~n", []),
     {noreply, State};
 handle_info(Info, State) ->
-    ?LOG_ERROR("Meh: ~p~n", [Info]),
+    ?LOG_ERROR("Got unknown info: ~p~n", [Info]),
     {noreply, State}.
 
 handle_message(#{operation := 'PING'}, State) ->
@@ -165,8 +175,6 @@ sender_loop(Socket) ->
         {send, Bin, Rsp} ->
             inet:setopts(Socket, [{active, false}]),
             gen_tcp:send(Socket, Bin),
-            {ok, Rsp} = gen_tcp:recv(Socket, byte_size(Rsp));
-        CatchAll ->
-            ?LOG_ERROR("Huh?: ~p~n", [CatchAll])
+            {ok, Rsp} = gen_tcp:recv(Socket, byte_size(Rsp))
     end,
     sender_loop(Socket).
