@@ -3,12 +3,13 @@
 
 main([Host, Port, Subject, SID]) ->
     P = list_to_integer(Port),
-    natserl:start_link(#{remote_address => Host,
-                         remote_port => P,
-                         ping_interval => 1000}),
-    {ok, Info} = natserl:connect(),
+    {ok, Pid} = natserl:start_link(#{name => <<"natserl1">>,
+                                     remote_address => Host,
+                                     remote_port => P,
+                                     ping_interval => 1000}),
+    {ok, Info} = natserl:connect(Pid),
     io:format("Connected to server: ~p~n", [Info]),
-    ok = natserl:subscribe(list_to_binary(Subject), list_to_binary(SID)),
+    ok = natserl:subscribe(Pid, list_to_binary(Subject), list_to_binary(SID)),
     loop().
 
 loop() ->

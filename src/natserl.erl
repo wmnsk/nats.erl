@@ -3,10 +3,10 @@
 -behaviour(gen_server).
 
 -export([start_link/1,
-         connect/0, connect/1,
-         publish/2, publish/3,
-         subscribe/2, subscribe/3,
-         unsubscribe/1, unsubscribe/2]).
+         connect/0, connect/1, connect/2,
+         publish/2, publish/3, publish/4,
+         subscribe/2, subscribe/3, subscribe/4,
+         unsubscribe/1, unsubscribe/2, unsubscribe/3]).
 
 -export([init/1,
          handle_call/3,
@@ -19,7 +19,8 @@
 -include_lib("include/natserl.hrl").
 
 -record(state,
-        {remote_address :: inet:hostname(),
+        {name           :: atom(), 
+         remote_address :: inet:hostname(),
          remote_port    :: inet:portno(),
          socket         :: gen_tcp:socket(),
          conn           :: pid(),
@@ -31,33 +32,51 @@
 %% TODO: add specs.
 
 start_link(Config) ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, [Config], []).
+    Name = binary_to_atom(maps:get(name, Config, <<"natserl">>)),
+    gen_server:start_link({local, Name}, ?MODULE, [Config#{name => Name}], []).
 
 connect() ->
     connect(#{}).
-connect(Opts) ->
-    Socket = gen_server:call(?MODULE, {connect, Opts}),
-    {ok, Socket}.
+connect(Pid) when is_pid(Pid) ->
+    connect(Pid, #{});
+connect(Opts) when is_map(Opts) ->
+    connect(?MODULE, Opts).
+connect(Pid, Opts) ->
+    Info = gen_server:call(Pid, {connect, Opts}),
+    {ok, Info}.
 
 publish(Subject, Message) ->
-    publish(Subject, undefined, Message).
+    publish(?MODULE, Subject, undefined, Message).
+publish(Pid, Subject, Message) when is_pid(Pid) ->
+    publish(Pid, Subject, undefined, Message);
 publish(Subject, ReplyTo, Message) ->
-    gen_server:call(?MODULE, {publish, Subject, ReplyTo, Message}).
+    publish(?MODULE, Subject, ReplyTo, Message).
+publish(Pid, Subject, ReplyTo, Message) ->
+    gen_server:call(Pid, {publish, Subject, ReplyTo, Message}).
 
 subscribe(Subject, SID) ->
-    subscribe(Subject, undefined, SID).
+    subscribe(?MODULE, Subject, undefined, SID).
+subscribe(Pid, Subject, SID) when is_pid(Pid) ->
+    subscribe(Pid, Subject, undefined, SID);
 subscribe(Subject, QueueGroup, SID) ->
-    gen_server:call(?MODULE, {subscribe, Subject, QueueGroup, SID}).
+    subscribe(?MODULE, Subject, QueueGroup, SID).
+subscribe(Pid, Subject, QueueGroup, SID) ->
+    gen_server:call(Pid, {subscribe, Subject, QueueGroup, SID}).
 
 %% not implemented yet.
 unsubscribe(SID) ->
-    unsubscribe(SID, undefined).
+    unsubscribe(?MODULE, SID, undefined).
+unsubscribe(Pid, SID) when is_pid(Pid) ->
+    unsubscribe(Pid, SID, undefined);
 unsubscribe(SID, MaxMsgs) ->
-    gen_server:call(?MODULE, {unsubscribe, SID, MaxMsgs}).
+    unsubscribe(?MODULE, SID, MaxMsgs).
+unsubscribe(Pid, SID, MaxMsgs) ->
+    gen_server:call(Pid, {unsubscribe, SID, MaxMsgs}).
 
 %% gen_server callbacks
 
 init([Config]) ->
+    Name = maps:get(name, Config),
     Raddr = maps:get(remote_address, Config, undefined),
     Rport = maps:get(remote_port, Config, 0),
     {ok, Socket} = gen_tcp:connect(Raddr, Rport, [binary, {active, false}]),
@@ -68,7 +87,8 @@ init([Config]) ->
     Interval = maps:get(ping_interval, Config, -1),
     timer:send_interval(Interval, ping_interval),
 
-    {ok, #state{remote_address = Raddr,
+    {ok, #state{name = Name,
+                remote_address = Raddr,
                 remote_port = Rport,
                 socket = Socket,
                 conn = Conn,
