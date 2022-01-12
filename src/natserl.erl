@@ -64,7 +64,6 @@ subscribe(Subject, QueueGroup, SID) ->
 subscribe(Pid, Subject, QueueGroup, SID) ->
     gen_server:call(Pid, {subscribe, Subject, QueueGroup, SID}).
 
-%% not implemented yet.
 unsubscribe(SID) ->
     unsubscribe(?MODULE, SID, undefined).
 unsubscribe(Pid, SID) when is_pid(Pid) ->
@@ -80,6 +79,7 @@ receive_on(Pid, SID, Receiver) ->
     gen_server:call(Pid, {receive_on, SID, Receiver}).
 
 %% gen_server callbacks
+%% TODO: use gen_statem instead.
 
 init([Config]) ->
     Name = maps:get(name, Config),
@@ -183,6 +183,20 @@ sender_loop(Socket) ->
         {send, Bin, Rsp} ->
             inet:setopts(Socket, [{active, false}]),
             gen_tcp:send(Socket, Bin),
-            {ok, Rsp} = gen_tcp:recv(Socket, byte_size(Rsp))
+            verify_response(Socket, Rsp)
     end,
     sender_loop(Socket).
+
+verify_response(Socket, Rsp) ->
+    {ok, R} = gen_tcp:recv(Socket, byte_size(Rsp)),
+    case R of
+        Rsp ->
+            ok;
+        ?PING ->
+            P = natserl_codec:encode(#{operation => 'PONG'}),
+            gen_tcp:send(Socket, P),
+            ?LOG_DEBUG("Responded to PING successfully~n", []),
+            verify_response(Socket, Rsp);
+        Unknown ->
+            ?LOG_ERROR("Got unexpected response: ~p~n", [Unknown])
+    end.
