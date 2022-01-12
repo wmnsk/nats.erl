@@ -123,6 +123,14 @@ handle_call({subscribe, Subject, QueueGroup, SID}, {Sub, _Tag} = _From, State) -
     ok = send(Conn, P, ?OK),
     Subs = maps:merge(State#state.subscribers, #{SID => Sub}),
     {reply, ok, State#state{subscribers = Subs}};
+handle_call({unsubscribe, SID, MaxMsgs}, _From, State) ->
+    Conn = State#state.conn,
+    P = natserl_codec:encode(#{operation => 'UNSUB',
+                               sid => SID,
+                               max_msgs => MaxMsgs}),
+    ok = send(Conn, P, ?OK),
+    Subs = maps:remove(SID, State#state.subscribers),
+    {reply, ok, State#state{subscribers = Subs}};
 handle_call({receive_on, SID, Receiver}, _From, State) ->
     Subs = maps:merge(State#state.subscribers, #{SID => Receiver}),
     {reply, ok, State#state{subscribers = Subs}};

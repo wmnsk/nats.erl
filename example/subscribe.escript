@@ -13,7 +13,8 @@ main([Host, Port, Subject, ID]) ->
     ok = natserl:subscribe(Pid, list_to_binary(Subject), SID),
     Receiver = spawn(fun() -> handle_message() end),
     natserl:receive_on(Pid, SID, Receiver),
-    timer:sleep(infinity).
+    timer:sleep(60000),
+    natserl:unsubscribe(Pid, SID).
 
 handle_message() ->
     io:format("Waiting for messages...~n", []),
