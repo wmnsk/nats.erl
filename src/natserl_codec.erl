@@ -95,14 +95,25 @@ decode('UNSUB' = Op, [Body]) ->
     end,
     #{operation => Op, sid => I, max_msgs => M};
 decode('MSG' = Op, Body) ->
-    [M, P, <<>>] = string:split(Body, ?CRLF, all),
+    [M, P] = string:split(Body, ?CRLF),
     {S, I, R, B} = case string:split(M, " ", all) of
         [Sbj, ID, Rep, Bytes] ->
             {Sbj, ID, Rep, binary_to_integer(Bytes)};
         [Sbj, ID, Bytes] ->
             {Sbj, ID, undefined, binary_to_integer(Bytes)}
     end,
-    #{operation => Op, subject => S, sid => I, reply_to => R, num_bytes => B, payload => P};
+    PLen = (byte_size(P) - 2), % crlf
+    case B == PLen of
+        true ->
+            #{operation => Op,
+              subject => S,
+              sid => I,
+              reply_to => R,
+              num_bytes => B,
+              payload => remove_crlf(P)};
+        false ->
+            {need_more_data, B - PLen}
+    end;
 decode('PING', _) ->
     #{operation => 'PING'};
 decode('PONG', _) ->

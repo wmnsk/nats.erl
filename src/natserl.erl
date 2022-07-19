@@ -26,6 +26,7 @@
          socket         :: gen_tcp:socket(),
          conn           :: pid(),
          conn_info      :: map(),
+         decoder        :: pid(),
          subscribers    :: map()
         }).
 
@@ -89,7 +90,8 @@ init([Config]) ->
     {ok, Msg} = gen_tcp:recv(Socket, 0, 1000),
     Info = natserl_codec:decode(Msg),
 
-    Pid = spawn_link(fun() -> sender_loop(Socket) end),
+    Conn = spawn_link(fun() -> sender_loop(Socket) end),
+    Decoder = spawn_link(fun() -> decoder_loop(<<>>) end),
     Interval = maps:get(ping_interval, Config, -1),
     timer:send_interval(Interval, ping_interval),
 
@@ -97,8 +99,9 @@ init([Config]) ->
                 remote_address = Raddr,
                 remote_port = Rport,
                 socket = Socket,
-                conn = Pid,
+                conn = Conn,
                 conn_info = Info,
+                decoder = Decoder,
                 subscribers = #{}}}.
 
 handle_call({connect, Opts}, _From, State) ->
@@ -142,8 +145,8 @@ handle_cast(Msg, State) ->
     {noreply, State}.
 
 handle_info({tcp, _Socket, Msg}, State) ->
-    NewState = handle_message(natserl_codec:decode(Msg), State),
-    {noreply, NewState};
+    State#state.decoder ! {Msg, State},
+    {noreply, State};
 handle_info(ping_interval, State) ->
     P = natserl_codec:encode(#{operation => 'PING'}),
     ok = send(State#state.conn, P, ?PONG),
@@ -157,11 +160,24 @@ handle_message(#{operation := 'PING'}, State) ->
     P = natserl_codec:encode(#{operation => 'PONG'}),
     ok = send(State#state.conn, P, none),
     ?LOG_DEBUG("Responded to PING successfully~n", []),
-    State;
+    ok;
 handle_message(#{operation := 'MSG', sid := I} = U, State) ->
     Subscriber = maps:get(I, State#state.subscribers),
     Subscriber ! U,
-    State.
+    ok.
+
+decoder_loop(Previous) ->
+    receive
+        {Msg, State} ->
+            M = <<Previous/binary, Msg/binary>>,
+            case natserl_codec:decode(M) of
+                {need_more_data, _Len} ->
+                    decoder_loop(M);
+                Decoded ->
+                    ok = handle_message(Decoded, State)
+            end
+    end,
+    decoder_loop(<<>>).
 
 terminate(_Reason, State) ->
     Socket = State#state.socket,
