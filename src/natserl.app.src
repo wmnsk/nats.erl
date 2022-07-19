@@ -1,6 +1,6 @@
 {application, natserl,
  [{description, "A simple NATS client for Erlang/OTP"},
-  {vsn, "0.1.2"},
+  {vsn, "0.1.3"},
   {modules, []},
   {registered, []},
   {applications,
