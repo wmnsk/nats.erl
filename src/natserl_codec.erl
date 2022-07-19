@@ -102,7 +102,7 @@ decode('MSG' = Op, Body) ->
         [Sbj, ID, Bytes] ->
             {Sbj, ID, undefined, binary_to_integer(Bytes)}
     end,
-    PLen = (byte_size(P) - 2), % crlf
+    PLen = byte_size(P) - 2, % crlf
     case B == PLen of
         true ->
             #{operation => Op,
@@ -140,5 +140,10 @@ to_atom("-ERR")    -> 'ERR'.
 
 remove_crlf(Bin) ->
     %% for some reason string:trim(Bin, trailing, "\r\n") doesn't work.
-    [B|_] = string:replace(Bin, "\r\n", ""),
-    B.
+    L = byte_size(Bin) - 2,
+    case Bin of
+        <<B:L/binary, "\r\n">> ->
+            B;
+        _ ->
+            Bin
+    end.
