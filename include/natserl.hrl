@@ -3,60 +3,90 @@
 %% Protocol Messages
 %% https://docs.nats.io/reference/reference-protocols/nats-protocol#protocol-messages
 -define(INFO(Vals),
-        <<"INFO ", Vals/binary, "\r\n">>).
+    <<"INFO ", Vals/binary, "\r\n">>
+).
 -define(CONNECT(Opts),
-        <<"CONNECT ", Opts/binary, "\r\n">>).
+    <<"CONNECT ", Opts/binary, "\r\n">>
+).
 -define(PUB(Sbj, Bytes, Msg),
-        <<"PUB ", Sbj/binary, " ", Bytes/binary, "\r\n", Msg/binary, "\r\n">>).
+    <<"PUB ", Sbj/binary, " ", Bytes/binary, "\r\n", Msg/binary, "\r\n">>
+).
 -define(PUB(Sbj, RepTo, Bytes, Msg),
-        <<"PUB ", Sbj/binary, " ", RepTo/binary, " ", Bytes/binary, "\r\n", Msg/binary, "\r\n">>).
+    <<"PUB ", Sbj/binary, " ", RepTo/binary, " ", Bytes/binary, "\r\n", Msg/binary, "\r\n">>
+).
 -define(SUB(Sbj, SID),
-        <<"SUB ", Sbj/binary, " ", SID/binary, "\r\n">>).
+    <<"SUB ", Sbj/binary, " ", SID/binary, "\r\n">>
+).
 -define(SUB(Sbj, QG, SID),
-        <<"SUB ", Sbj/binary, " ", QG/binary, " ", ID/binary, "\r\n">>).
+    <<"SUB ", Sbj/binary, " ", QG/binary, " ", ID/binary, "\r\n">>
+).
 -define(UNSUB(SID),
-        <<"UNSUB ", SID/binary, "\r\n">>).
+    <<"UNSUB ", SID/binary, "\r\n">>
+).
 -define(UNSUB(SID, Max),
-        <<"UNSUB ", SID/binary, " ", Max/binary, "\r\n">>).
+    <<"UNSUB ", SID/binary, " ", Max/binary, "\r\n">>
+).
 -define(MSG(Sbj, SID, Bytes, Msg),
-        <<"MSG ", Sbj/binary, " ", SID/binary, " ", Bytes/binary, "\r\n", Msg/binary, "\r\n">>).
+    <<"MSG ", Sbj/binary, " ", SID/binary, " ", Bytes/binary, "\r\n", Msg/binary, "\r\n">>
+).
 -define(MSG(Sbj, SID, RepTo, Bytes, Msg),
-        <<"MSG ", Sbj/binary, " ", SID/binary, " ", RepTo/binary, " ", Bytes/binary, "\r\n", Msg/binary, "\r\n">>).
+    <<"MSG ", Sbj/binary, " ", SID/binary, " ", RepTo/binary, " ", Bytes/binary, "\r\n", Msg/binary,
+        "\r\n">>
+).
 -define(PING,
-        <<"PING\r\n">>).
+    <<"PING\r\n">>
+).
 -define(PONG,
-        <<"PONG\r\n">>).
+    <<"PONG\r\n">>
+).
 -define(OK,
-        <<"+OK\r\n">>).
+    <<"+OK\r\n">>
+).
 -define(ERR(Msg),
-        <<"-ERR ", Msg/binary, "\r\n">>).
+    <<"-ERR ", Msg/binary, "\r\n">>
+).
 -define(ERR_UNKNOWN_PROTOCOL_OPERATION,
-        ?ERR(<<"'Unknown Protocol Operation'">>)).
+    ?ERR(<<"'Unknown Protocol Operation'">>)
+).
 -define(ERR_ATTEMPTED_TO_CONNECT_TO_ROUTE_PORT,
-        ?ERR(<<"'Attempted To Connect To Route Port'">>)).
+    ?ERR(<<"'Attempted To Connect To Route Port'">>)
+).
 -define(ERR_AUTHORIZATION_VIOLATION,
-        ?ERR(<<"'Authorization Violation'">>)).
+    ?ERR(<<"'Authorization Violation'">>)
+).
 -define(ERR_AUTHORIZATION_TIMEOUT,
-        ?ERR(<<"'Authorization Timeout'">>)).
+    ?ERR(<<"'Authorization Timeout'">>)
+).
 -define(ERR_INVALID_CLIENT_PROTOCOL,
-        ?ERR(<<"'Invalid Client Protocol'">>)).
+    ?ERR(<<"'Invalid Client Protocol'">>)
+).
 -define(ERR_MAXIMUM_CONTROL_LINE_EXCEEDED,
-        ?ERR(<<"'Maximum Control Line Exceeded'">>)).
+    ?ERR(<<"'Maximum Control Line Exceeded'">>)
+).
 -define(ERR_PARSER_ERROR,
-        ?ERR(<<"'Parser Error'">>)).
+    ?ERR(<<"'Parser Error'">>)
+).
 -define(ERR_SECURE_CONNECTION_TLS_REQUIRED,
-        ?ERR(<<"'Secure Connection - TLS Required'">>)).
+    ?ERR(<<"'Secure Connection - TLS Required'">>)
+).
 -define(ERR_STALE_CONNECTION,
-        ?ERR(<<"'Stale Connection'">>)).
+    ?ERR(<<"'Stale Connection'">>)
+).
 -define(ERR_MAXIMUM_CONNECTIONS_EXCEEDED,
-        ?ERR(<<"'Maximum Connections Exceeded'">>)).
+    ?ERR(<<"'Maximum Connections Exceeded'">>)
+).
 -define(ERR_SLOW_CONSUMER,
-        ?ERR(<<"'Slow Consumer'">>)).
+    ?ERR(<<"'Slow Consumer'">>)
+).
 -define(ERR_MAXIMUM_PAYLOAD_VIOLATION,
-        ?ERR(<<"'Maximum Payload Violation'">>)).
+    ?ERR(<<"'Maximum Payload Violation'">>)
+).
 -define(ERR_INVALID_SUBJECT,
-        ?ERR(<<"'Invalid Subject'">>)).
+    ?ERR(<<"'Invalid Subject'">>)
+).
 -define(ERR_PERMISSIONS_VIOLATION_FOR_SUBSCRIPTION_TO(Sbj),
-        ?ERR(<<"'Permissions Violation for Subscription to ", Sbj/binary, "'">>)).
+    ?ERR(<<"'Permissions Violation for Subscription to ", Sbj/binary, "'">>)
+).
 -define(ERR_PERMISSIONS_VIOLATION_FOR_PUBLISH_TO(Sbj),
-        ?ERR(<<"'Permissions Violation for Publish to ", Sbj/binary, "'">>)).
+    ?ERR(<<"'Permissions Violation for Publish to ", Sbj/binary, "'">>)
+).

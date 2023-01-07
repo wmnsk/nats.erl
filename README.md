@@ -29,11 +29,12 @@ See [Subscriber/Publisher examples](./example) for details.
 
 ```erlang
 %% Start gen_server with network info.
-{ok, Pid} = natserl:start_link(#{name => <<"natserl">>,  % any name unique per connection
-                                 remote_address => Host, % server address
-                                 remote_port => P,       % server port
-                                 ping_interval => 1000   % interval to send PING
-                                }),
+{ok, Pid} = natserl:start_link(#{
+    name => <<"natserl">>,  % any name unique per connection
+    remote_address => Host, % server address
+    remote_port => P,       % server port
+    ping_interval => 1000   % interval to send PING
+}),
 
 %% Connect to your NATS server.
 %% Info has the contents of INFO message from the server.

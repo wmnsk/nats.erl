@@ -2,33 +2,37 @@
 
 -behaviour(gen_server).
 
--export([start_link/1,
-         connect/0, connect/1, connect/2,
-         publish/2, publish/3, publish/4,
-         subscribe/2, subscribe/3, subscribe/4,
-         unsubscribe/1, unsubscribe/2, unsubscribe/3,
-         receive_on/2, receive_on/3]).
+-export([
+    start_link/1,
+    connect/0, connect/1, connect/2,
+    publish/2, publish/3, publish/4,
+    subscribe/2, subscribe/3, subscribe/4,
+    unsubscribe/1, unsubscribe/2, unsubscribe/3,
+    receive_on/2, receive_on/3
+]).
 
--export([init/1,
-         handle_call/3,
-         handle_cast/2,
-         handle_info/2,
-         terminate/2,
-         code_change/3]).
+-export([
+    init/1,
+    handle_call/3,
+    handle_cast/2,
+    handle_info/2,
+    terminate/2,
+    code_change/3
+]).
 
 -include_lib("kernel/include/logger.hrl").
 -include_lib("include/natserl.hrl").
 
--record(state,
-        {name           :: atom(), 
-         remote_address :: inet:hostname(),
-         remote_port    :: inet:portno(),
-         socket         :: gen_tcp:socket(),
-         conn           :: pid(),
-         conn_info      :: map(),
-         decoder        :: pid(),
-         subscribers    :: map()
-        }).
+-record(state, {
+    name :: atom(),
+    remote_address :: inet:hostname(),
+    remote_port :: inet:portno(),
+    socket :: gen_tcp:socket(),
+    conn :: pid(),
+    conn_info :: map(),
+    decoder :: pid(),
+    subscribers :: map()
+}).
 
 %% APIs for users
 %% TODO: add specs.
@@ -95,14 +99,17 @@ init([Config]) ->
     Interval = maps:get(ping_interval, Config, -1),
     timer:send_interval(Interval, ping_interval),
 
-    {ok, #state{name = Name,
-                remote_address = Raddr,
-                remote_port = Rport,
-                socket = Socket,
-                conn = Conn,
-                conn_info = Info,
-                decoder = Decoder,
-                subscribers = #{}}}.
+    State = #state{
+        name = Name,
+        remote_address = Raddr,
+        remote_port = Rport,
+        socket = Socket,
+        conn = Conn,
+        conn_info = Info,
+        decoder = Decoder,
+        subscribers = #{}
+    },
+    {ok, State}.
 
 handle_call({connect, Opts}, _From, State) ->
     Conn = State#state.conn,
@@ -111,26 +118,32 @@ handle_call({connect, Opts}, _From, State) ->
     {reply, State#state.conn_info, State};
 handle_call({publish, Subject, ReplyTo, Message}, _From, State) ->
     Conn = State#state.conn,
-    P = natserl_codec:encode(#{operation => 'PUB',
-                               subject => Subject,
-                               reply_to => ReplyTo,
-                               payload => Message}),
+    P = natserl_codec:encode(#{
+        operation => 'PUB',
+        subject => Subject,
+        reply_to => ReplyTo,
+        payload => Message
+    }),
     ok = send(Conn, P, ?OK),
     {reply, ok, State};
 handle_call({subscribe, Subject, QueueGroup, SID}, {Sub, _Tag} = _From, State) ->
     Conn = State#state.conn,
-    P = natserl_codec:encode(#{operation => 'SUB',
-                               subject => Subject,
-                               queue_group => QueueGroup,
-                               sid => SID}),
+    P = natserl_codec:encode(#{
+        operation => 'SUB',
+        subject => Subject,
+        queue_group => QueueGroup,
+        sid => SID
+    }),
     ok = send(Conn, P, ?OK),
     Subs = maps:merge(State#state.subscribers, #{SID => Sub}),
     {reply, ok, State#state{subscribers = Subs}};
 handle_call({unsubscribe, SID, MaxMsgs}, _From, State) ->
     Conn = State#state.conn,
-    P = natserl_codec:encode(#{operation => 'UNSUB',
-                               sid => SID,
-                               max_msgs => MaxMsgs}),
+    P = natserl_codec:encode(#{
+        operation => 'UNSUB',
+        sid => SID,
+        max_msgs => MaxMsgs
+    }),
     ok = send(Conn, P, ?OK),
     Subs = maps:remove(SID, State#state.subscribers),
     {reply, ok, State#state{subscribers = Subs}};

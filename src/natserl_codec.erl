@@ -1,7 +1,9 @@
 -module(natserl_codec).
 
--export([encode/1,
-         decode/1]).
+-export([
+    encode/1,
+    decode/1
+]).
 
 -include_lib("include/natserl.hrl").
 
@@ -60,7 +62,7 @@ encode('ERR', #{message := Msg}) ->
     ?ERR(Msg).
 
 decode(Msg) ->
-    [Op|Body] = string:split(Msg, " "),
+    [Op | Body] = string:split(Msg, " "),
     decode(upper_atom(Op), Body).
 
 decode('INFO' = Op, [Body]) ->
@@ -71,46 +73,53 @@ decode('CONNECT' = Op, [Body]) ->
     Opts#{operation => Op};
 decode('PUB' = Op, Body) ->
     [M, P, <<>>] = string:split(Body, ?CRLF, all),
-    {S, R, B} = case string:split(M, " ", all) of
-        [Sbj, Rep, Bytes] ->
-            {Sbj, Rep, binary_to_integer(Bytes)};
-        [Sbj, Bytes] ->
-            {Sbj, undefined, binary_to_integer(Bytes)}
-    end,
+    {S, R, B} =
+        case string:split(M, " ", all) of
+            [Sbj, Rep, Bytes] ->
+                {Sbj, Rep, binary_to_integer(Bytes)};
+            [Sbj, Bytes] ->
+                {Sbj, undefined, binary_to_integer(Bytes)}
+        end,
     #{operation => Op, subject => S, reply_to => R, num_bytes => B, payload => P};
 decode('SUB' = Op, [Body]) ->
-    {S, Q, I} = case string:split(remove_crlf(Body), " ", all) of
-        [Sbj, QG, SID] ->
-            {Sbj, QG, SID};
-        [Sbj, SID] ->
-            {Sbj, undefined, SID}
-    end,
+    {S, Q, I} =
+        case string:split(remove_crlf(Body), " ", all) of
+            [Sbj, QG, SID] ->
+                {Sbj, QG, SID};
+            [Sbj, SID] ->
+                {Sbj, undefined, SID}
+        end,
     #{operation => Op, subject => S, queue_group => Q, sid => I};
 decode('UNSUB' = Op, [Body]) ->
-    {I, M} = case string:split(remove_crlf(Body), " ", all) of
-        [SID, Max] ->
-            {SID, binary_to_integer(Max)};
-        [SID] ->
-            {SID, undefined}
-    end,
+    {I, M} =
+        case string:split(remove_crlf(Body), " ", all) of
+            [SID, Max] ->
+                {SID, binary_to_integer(Max)};
+            [SID] ->
+                {SID, undefined}
+        end,
     #{operation => Op, sid => I, max_msgs => M};
 decode('MSG' = Op, Body) ->
     [M, P] = string:split(Body, ?CRLF),
-    {S, I, R, B} = case string:split(M, " ", all) of
-        [Sbj, ID, Rep, Bytes] ->
-            {Sbj, ID, Rep, binary_to_integer(Bytes)};
-        [Sbj, ID, Bytes] ->
-            {Sbj, ID, undefined, binary_to_integer(Bytes)}
-    end,
-    PLen = byte_size(P) - 2, % crlf
+    {S, I, R, B} =
+        case string:split(M, " ", all) of
+            [Sbj, ID, Rep, Bytes] ->
+                {Sbj, ID, Rep, binary_to_integer(Bytes)};
+            [Sbj, ID, Bytes] ->
+                {Sbj, ID, undefined, binary_to_integer(Bytes)}
+        end,
+    % crlf
+    PLen = byte_size(P) - 2,
     case B == PLen of
         true ->
-            #{operation => Op,
-              subject => S,
-              sid => I,
-              reply_to => R,
-              num_bytes => B,
-              payload => remove_crlf(P)};
+            #{
+                operation => Op,
+                subject => S,
+                sid => I,
+                reply_to => R,
+                num_bytes => B,
+                payload => remove_crlf(P)
+            };
         false ->
             {need_more_data, B - PLen}
     end;
@@ -124,19 +133,24 @@ decode('ERR' = Op, [Body]) ->
     #{operation => Op, message => remove_crlf(Body)}.
 
 upper_atom(Bin) ->
-    to_atom([if L >= $a, L =< $z -> L - $a + $A; true -> L end
-             || <<L>> <= remove_crlf(Bin)]).
+    to_atom([
+        if
+            L >= $a, L =< $z -> L - $a + $A;
+            true -> L
+        end
+     || <<L>> <= remove_crlf(Bin)
+    ]).
 
-to_atom("INFO")    -> 'INFO';
+to_atom("INFO") -> 'INFO';
 to_atom("CONNECT") -> 'CONNECT';
-to_atom("PUB")     -> 'PUB';
-to_atom("SUB")     -> 'SUB';
-to_atom("UNSUB")   -> 'UNSUB';
-to_atom("MSG")     -> 'MSG';
-to_atom("PING")    -> 'PING';
-to_atom("PONG")    -> 'PONG';
-to_atom("+OK")     -> 'OK';
-to_atom("-ERR")    -> 'ERR'.
+to_atom("PUB") -> 'PUB';
+to_atom("SUB") -> 'SUB';
+to_atom("UNSUB") -> 'UNSUB';
+to_atom("MSG") -> 'MSG';
+to_atom("PING") -> 'PING';
+to_atom("PONG") -> 'PONG';
+to_atom("+OK") -> 'OK';
+to_atom("-ERR") -> 'ERR'.
 
 remove_crlf(Bin) ->
     %% for some reason string:trim(Bin, trailing, "\r\n") doesn't work.
